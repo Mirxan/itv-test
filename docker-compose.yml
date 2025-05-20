@@ -1,0 +1,70 @@
+name: itv
+services:
+  goapi:
+    container_name: itv-goapi
+    restart: unless-stopped
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - 8000:8000
+    volumes:
+      - ./src/:/app
+    depends_on:
+      pgdb:
+        condition: service_healthy
+    networks:
+      - itv_network
+
+  mysqldb:
+    restart: always
+    container_name: itv-gomysql
+    image: mysql:8.0
+    volumes:
+      - ./mysqldata:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: 1
+      MYSQL_USER: user
+    networks:
+      - itv_network
+
+
+  pgdb:
+    image: postgres:latest
+    restart: unless-stopped
+    container_name: itv-gopgdb
+    environment:
+      - POSTGRES_USER=${DB_USER}
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
+      - POSTGRES_DB=${DB_NAME}
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./pgsqldata:/var/lib/postgresql/data
+    networks:
+      - itv_network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -d ${DB_NAME} -U ${DB_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  pgadmin:
+    container_name: itv-gopgadmin
+    image: dpage/pgadmin4:latest
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: root
+    ports:
+      - "5055:80"
+    networks:
+      - itv_network
+
+networks:
+  itv_network:
+    driver: bridge
+
+volumes:
+  mysqldata:
+  pgsqldata:
